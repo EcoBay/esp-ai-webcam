@@ -1,9 +1,11 @@
-ESP-IDF template app
+ESP AI WebCam
 ====================
 
-This is a template application to be used with [Espressif IoT Development Framework](https://github.com/espressif/esp-idf).
+ESP AI WebCam is (yet another) webcam server for ESP32 
+but it aims to be extensible for computer vision support. 
+To allow for rapid deployment of computer vision model. 
+It is also support Over the Air Updates (OTA) so it can be updated on the fly.
 
-Please check [ESP-IDF docs](https://docs.espressif.com/projects/esp-idf/en/latest/get-started/index.html) for getting started instructions.
 
 *Code in this repository is in the Public Domain (or CC0 licensed, at your option.)
 Unless required by applicable law or agreed to in writing, this
