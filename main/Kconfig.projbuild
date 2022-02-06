@@ -10,10 +10,4 @@ menu "Project Configuration"
         default "mypassword"
         help
         WiFi password (WPA or WPA2) to use.
-
-    config ESP_MAXIMUM_RETRY
-        int "Maximum Retry"
-        default 5
-        help
-        Maximum number of retries to connect to access point before terminating
 endmenu
