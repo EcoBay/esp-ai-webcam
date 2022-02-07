@@ -4,6 +4,6 @@
 #include "esp_http_server.h"
 
 typedef void (*callback) (httpd_handle_t server);
-void init_server(callback cbk);
+void init_server(callback connect_callback, callback disconnect_callback);
 
 #endif

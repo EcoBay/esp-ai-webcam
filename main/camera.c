@@ -70,12 +70,12 @@ static esp_err_t still_get_handler(httpd_req_t *req) {
     return ESP_OK;
 }
 
-static const httpd_uri_t capture_uri = {
-    .uri        = "/capture.jpg",
-    .method     = HTTP_GET,
-    .handler    = still_get_handler,
-};
 
-void camera_register_still_handler(httpd_handle_t server) {
+void camera_register_still_handler(httpd_handle_t server, const char *uri) {
+    const httpd_uri_t capture_uri = {
+        .uri        = uri,
+        .method     = HTTP_GET,
+        .handler    = still_get_handler,
+    };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &capture_uri));
 }

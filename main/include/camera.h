@@ -25,7 +25,7 @@
 
 void camera_init(void);
 
-void camera_register_still_handler(httpd_handle_t server);
-void camera_register_stream_handler(httpd_handle_t server);
+void camera_register_still_handler(httpd_handle_t server, const char *uri);
+void camera_register_stream_handler(httpd_handle_t server, const char *uri);
 
 #endif
