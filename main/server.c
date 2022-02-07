@@ -4,7 +4,7 @@
 #include "esp_event.h"
 #include <string.h>
 
-httpd_handle_t server = NULL;
+static httpd_handle_t server = NULL;
 
 static const char *TAG = "HTTP Server";
 
@@ -46,6 +46,8 @@ static void connect_handler(void* arg, esp_event_base_t event_base,
 
     ESP_LOGI(TAG, "Starting webserver");
     start_server();
+    callback cbk = (callback) arg;
+    cbk(server);
 }
 
 static void disconnect_handler(void* arg, esp_event_base_t event_base,
@@ -56,11 +58,11 @@ static void disconnect_handler(void* arg, esp_event_base_t event_base,
     stop_server();
 }
 
-void init_server(void) {
+void init_server(callback cbk) {
     ESP_ERROR_CHECK(esp_event_handler_instance_register(IP_EVENT,
                 IP_EVENT_STA_GOT_IP,
                 &connect_handler,
-                NULL,
+                (void*) cbk,
                 NULL));
     ESP_ERROR_CHECK(esp_event_handler_instance_register(WIFI_EVENT, 
                 WIFI_EVENT_STA_DISCONNECTED, 

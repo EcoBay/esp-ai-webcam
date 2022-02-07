@@ -1,9 +1,9 @@
 #ifndef SERVER_H
 #define SERVER_H
 
-#include "http_server.h"
+#include "esp_http_server.h"
 
-extern httpd_handle_t server;
-void init_server(void);
+typedef void (*callback) (httpd_handle_t server);
+void init_server(callback cbk);
 
 #endif

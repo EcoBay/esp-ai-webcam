@@ -2,8 +2,12 @@
 set(COMPONENT_REQUIRES )
 set(COMPONENT_PRIV_REQUIRES )
 
-file(GLOB SRC_FILES *.c)
-set(COMPONENT_SRCS ${SRC_FILES})
+set(COMPONENT_SRCS 
+        wifi.c
+        server.c
+        camera.c
+        main.c
+    )
 set(COMPONENT_ADD_INCLUDEDIRS "include")
 
 register_component()
