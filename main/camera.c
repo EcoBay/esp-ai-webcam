@@ -2,8 +2,14 @@
 
 #include "esp_camera.h"
 #include "esp_err.h"
+#include "esp_http_server.h"
 #include "esp_log.h"
 #include "sensor.h"
+
+#define PART_BOUNDARY "123456789000000000000987654321"
+static const char* _STREAM_CONTENT_TYPE = "multipart/x-mixed-replace;boundary=" PART_BOUNDARY;
+static const char* _STREAM_BOUNDARY = "\r\n--" PART_BOUNDARY "\r\n";
+static const char* _STREAM_PART = "Content-Type: image/jpeg\r\nContent-Length: %u\r\n\r\n";
 
 static const char* TAG = "Camera";
 
@@ -32,9 +38,9 @@ void camera_init(void) {
             .ledc_channel   = LEDC_CHANNEL_0,
 
             .pixel_format   = PIXFORMAT_JPEG,
-            .frame_size     = FRAMESIZE_SVGA,
-            .jpeg_quality   = 12,
-            .fb_count       = 1,
+            .frame_size     = FRAMESIZE_XGA,
+            .jpeg_quality   = 10,
+            .fb_count       = 2,
             .grab_mode      = CAMERA_GRAB_LATEST,
     };
 
@@ -42,34 +48,87 @@ void camera_init(void) {
     ESP_LOGI(TAG, "Camera started");
 }
 
-#define RESP_FAIL(msg) {        \
-    ESP_LOGE(TAG, msg);         \
-    httpd_resp_send_500(req);   \
-    return ESP_FAIL;            \
-}
-
 static esp_err_t still_get_handler(httpd_req_t *req) {
     camera_fb_t *fb = NULL;
+    esp_err_t res = ESP_OK;
 
-    if (!(fb = esp_camera_fb_get()))
-        RESP_FAIL("Image capture failed");
+    fb = esp_camera_fb_get();
+    if (!fb) {
+        ESP_LOGE(TAG, "Failed to get capture frame buffer");
+        res = ESP_FAIL;
+    }
 
-    if (httpd_resp_set_type(req, "image/jpeg"))
-        RESP_FAIL("Failed to set 'Content-typeimage/jpeg'");
+    if (fb -> format != PIXFORMAT_JPEG) {
+        ESP_LOGE(TAG, "Incompatible capture format");
+        res = ESP_FAIL;
+    }
 
-    if (httpd_resp_set_hdr(req, "Content-Disposition", "inline; filename=capture.jpg"))
-        RESP_FAIL("Failed to set 'Content-Disposition'");
+    if (res == ESP_OK)
+        res = httpd_resp_set_type(req, "image/jpeg");
 
-    if (fb -> format != PIXFORMAT_JPEG)
-        RESP_FAIL("Incompatible capture format");
+    if (res == ESP_OK)
+        res = httpd_resp_set_hdr(req, "Content-Disposition", 
+                                    "inline; filename=capture.jpg");
 
-    if (httpd_resp_send(req, (const char*) fb -> buf, fb -> len))
-        RESP_FAIL("Failed to send response");
+    if (res == ESP_OK) 
+        res = httpd_resp_send(req, (const char*) fb -> buf, fb -> len);
+
+    if (res != ESP_OK) {
+        ESP_LOGE(TAG, "Failed sending capture");
+        httpd_resp_send_500(req);
+    }
 
     esp_camera_fb_return(fb);
-    return ESP_OK;
+    return res;
 }
 
+static esp_err_t stream_get_handler(httpd_req_t *req) {
+    camera_fb_t *fb = NULL;
+    char part_buf[64];
+    esp_err_t res = ESP_OK;
+
+    if (httpd_resp_set_type(req, _STREAM_CONTENT_TYPE)) {
+        ESP_LOGE(TAG, "Failed to set stream content type");
+        return ESP_FAIL;
+    }
+
+    while (1) {
+        fb = esp_camera_fb_get();
+        if (!fb) {
+            ESP_LOGE(TAG, "Failed to get capture frame buffer");
+            res = ESP_FAIL;
+            break;
+        }
+
+        if (fb -> format != PIXFORMAT_JPEG) {
+            ESP_LOGE(TAG, "Incompatible capture format");
+            res = ESP_FAIL;
+        }
+
+        int hlen = snprintf(part_buf, 64, _STREAM_PART, fb -> len);
+        if (hlen < 0 || hlen >= 64) {
+            ESP_LOGE(TAG, "Failed to generate part header");
+            res = ESP_FAIL;
+        }
+
+        if (res == ESP_OK)
+            res = httpd_resp_send_chunk(req, _STREAM_BOUNDARY, strlen(_STREAM_BOUNDARY));
+
+
+        if (res == ESP_OK)
+            res = httpd_resp_send_chunk(req, part_buf, hlen);
+
+        if (res == ESP_OK)
+            res = httpd_resp_send_chunk(req, (const char*) fb -> buf, fb -> len);
+
+        esp_camera_fb_return(fb);
+
+        if (res != ESP_OK)
+            break;
+    }
+
+    return res;
+}
 
 void camera_register_still_handler(httpd_handle_t server, const char *uri) {
     const httpd_uri_t capture_uri = {
@@ -78,4 +137,13 @@ void camera_register_still_handler(httpd_handle_t server, const char *uri) {
         .handler    = still_get_handler,
     };
     ESP_ERROR_CHECK(httpd_register_uri_handler(server, &capture_uri));
+}
+
+void camera_register_stream_handler(httpd_handle_t server, const char *uri) {
+    const httpd_uri_t stream_uri = {
+        .uri        = uri,
+        .method     = HTTP_GET,
+        .handler    = stream_get_handler,
+    };
+    ESP_ERROR_CHECK(httpd_register_uri_handler(server, &stream_uri));
 }

@@ -4,7 +4,8 @@
 
 void connect_callback (httpd_handle_t server) {
     if (!server) return;
-    camera_register_still_handler(server, "/");
+    camera_register_still_handler(server, "/capture.jpg");
+    camera_register_stream_handler(server, "/");
 }
 
 void app_main(void) {
